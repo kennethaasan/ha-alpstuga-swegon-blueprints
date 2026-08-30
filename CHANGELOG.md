@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.0 - 2026-08-30
+
+- Add Norwegian Bokmål alongside English to every blueprint input, safety
+  description, and trace stop reason.
+- Use language-neutral Swegon mode values compatible with localized versions of
+  `ha-swegon-casa-cloud` 0.5.0 and newer.
+
 ## 2.1.0 - 2026-08-30
 
 - Accept optional predictive binary demand sensors, such as a bounded CO2

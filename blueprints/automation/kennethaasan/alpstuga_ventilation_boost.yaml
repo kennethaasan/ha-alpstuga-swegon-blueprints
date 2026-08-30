@@ -1,43 +1,45 @@
 blueprint:
-  name: ALPSTUGA - bounded ventilation boost
+  name: ALPSTUGA – avgrenset ventilasjonsforsering / bounded ventilation boost
   description: >-
-    Request a bounded ventilation Boost after sustained high CO2 or humidity.
-    Refuses unsafe PM2.5, restores the previous normal mode after recovery or a
-    hard timeout, and never overrides a later manual mode change.
+    Starter en tidsavgrenset ventilasjonsforsering ved vedvarende høy CO₂ eller
+    luftfuktighet. Avviser utrygg PM2,5, gjenoppretter forrige normalmodus etter
+    bedring eller maksimal tid og overstyrer aldri en senere manuell endring.
+    Requests bounded ventilation Boost after sustained high CO2 or humidity,
+    with the same safety, recovery, timeout, and manual-override guarantees.
   domain: automation
   homeassistant:
     min_version: 2024.10.0
   input:
     co2_sensor:
-      name: CO2 sensor
-      description: ALPSTUGA carbon-dioxide concentration sensor.
+      name: CO₂-sensor / CO2 sensor
+      description: ALPSTUGAs sensor for karbondioksid / carbon-dioxide concentration.
       selector:
         entity:
           filter:
             - domain: sensor
               device_class: carbon_dioxide
     humidity_sensor:
-      name: Humidity sensor
-      description: ALPSTUGA relative-humidity sensor.
+      name: Luftfuktighetssensor / Humidity sensor
+      description: ALPSTUGAs sensor for relativ luftfuktighet / relative humidity.
       selector:
         entity:
           filter:
             - domain: sensor
               device_class: humidity
     pm25_sensor:
-      name: PM2.5 sensor
-      description: ALPSTUGA PM2.5 concentration sensor used as a safety limit.
+      name: PM2,5-sensor / PM2.5 sensor
+      description: ALPSTUGAs PM2,5-sensor som brukes som sikkerhetsgrense / safety limit.
       selector:
         entity:
           filter:
             - domain: sensor
               device_class: pm25
     predictive_demand_sensors:
-      name: Predictive demand sensors
+      name: Prediktive behovssensorer / Predictive demand sensors
       description: >-
-        Optional binary sensors that turn on before a measured threshold is
-        reached, for example a rate-of-rise CO2 forecast. Any listed sensor can
-        request Boost, but all normal safety and mode checks still apply.
+        Valgfrie binærsensorer som slås på før en målt grense nås, for eksempel
+        et CO₂-varsel basert på stigningstakt. Optional sensors may request
+        Boost early; all normal safety and mode checks still apply.
       default: []
       selector:
         entity:
@@ -45,16 +47,16 @@ blueprint:
             - domain: binary_sensor
           multiple: true
     predictive_trigger_duration:
-      name: Sustained predictive demand before starting
+      name: Vedvarende prediktivt behov før start / Predictive demand duration
       default: "00:05:00"
       selector:
         duration:
     additional_safety_entities:
-      name: Additional safety entities
+      name: Ekstra sikkerhetsenheter / Additional safety entities
       description: >-
-        Optional binary sensors that must all remain on for automatic Boost.
-        Use these for ventilation alarms, telemetry freshness, or a master
-        enable switch. Missing, unavailable, unknown, or off is unsafe.
+        Valgfrie binærsensorer som alle må være på for automatisk forsering.
+        Bruk dem for alarmer, fersk telemetri eller hovedbryter. Optional safety
+        entities treat missing, unavailable, unknown, or off as unsafe.
       default: []
       selector:
         entity:
@@ -62,71 +64,72 @@ blueprint:
             - domain: binary_sensor
           multiple: true
     additional_safety_duration:
-      name: Sustained additional-safety failure before restoring
+      name: Varighet på sikkerhetsfeil før gjenoppretting / Safety-failure duration
       default: "00:05:00"
       selector:
         duration:
     ventilation_mode:
-      name: Ventilation mode
-      description: Select entity that controls the ventilation operating mode.
+      name: Ventilasjonsmodus / Ventilation mode
+      description: Valgenheten som styrer ventilasjonsmodus / operating-mode select entity.
       selector:
         entity:
           filter:
             - domain: select
     ownership_helper:
-      name: Boost ownership helper
+      name: Hjelper for eierskap til forsering / Boost ownership helper
       description: >-
-        Input boolean used to persist that this automation owns Boost across a
-        Home Assistant restart.
+        Av/på-hjelper som husker at automasjonen eier forseringen gjennom en
+        omstart av Home Assistant / persists ownership across a restart.
       selector:
         entity:
           filter:
             - domain: input_boolean
     previous_mode_helper:
-      name: Previous-mode helper
+      name: Hjelper for forrige modus / Previous-mode helper
       description: >-
-        Input select used to persist the normal mode that should be restored.
-        Its options must include every eligible mode and the fallback mode.
+        Valghjelper som lagrer normalmodusen som skal gjenopprettes. Alternativene
+        må omfatte alle tillatte moduser og reservemodusen / must include every
+        eligible and fallback mode.
       selector:
         entity:
           filter:
             - domain: input_select
     maximum_timer:
-      name: Maximum-duration timer
+      name: Tidsur for maksimal varighet / Maximum-duration timer
       description: >-
-        Timer used to persist the hard Boost deadline. Configure the timer with
-        restore enabled; the blueprint supplies its duration when Boost starts.
+        Tidsur som lagrer absolutt sluttid. Aktiver gjenoppretting; blueprinten
+        angir varigheten ved start / enable restore; duration is supplied at start.
       selector:
         entity:
           filter:
             - domain: timer
     boost_option:
-      name: Boost option
-      default: Boost
+      name: Verdi for forsering / Boost option
+      default: boost
       selector:
         text:
     eligible_modes:
-      name: Modes automation may take over
-      description: Comma-separated normal modes. Away modes should not be listed.
-      default: "Automatic,Home,Home +"
+      name: Moduser automasjonen kan overta / Eligible modes
+      description: Kommaseparerte normalmoduser; bortemoduser skal ikke tas med / comma-separated normal modes.
+      default: "automatic,home,home_plus"
       selector:
         text:
     restorable_modes:
-      name: Writable modes that can be restored
+      name: Skrivbare moduser som kan gjenopprettes / Restorable modes
       description: >-
-        Comma-separated subset of eligible modes that the integration can
-        write. Read-only automatic/transient states use the fallback mode.
-      default: "Home,Home +"
+        Kommaseparert delmengde som integrasjonen kan skrive. Skrivebeskyttede
+        automatiske tilstander bruker reservemodusen / writable eligible modes.
+      default: "home,home_plus"
       selector:
         text:
     fallback_mode:
-      name: Safe fallback mode
-      description: Used only if the previous mode is no longer eligible.
-      default: Home
+      name: Trygg reservemodus / Safe fallback mode
+      description: Brukes bare hvis forrige modus ikke lenger er tillatt / used only when previous mode is ineligible.
+      default: home
       selector:
         text:
     co2_start:
-      name: CO2 start threshold
+      name: Startgrense for CO₂ / CO2 start threshold
       default: 1000
       selector:
         number:
@@ -135,7 +138,7 @@ blueprint:
           step: 50
           unit_of_measurement: ppm
     co2_stop:
-      name: CO2 recovery threshold
+      name: Gjenopprettingsgrense for CO₂ / CO2 recovery threshold
       default: 800
       selector:
         number:
@@ -144,7 +147,7 @@ blueprint:
           step: 50
           unit_of_measurement: ppm
     humidity_start:
-      name: Humidity start threshold
+      name: Startgrense for luftfuktighet / Humidity start threshold
       default: 65
       selector:
         number:
@@ -153,7 +156,7 @@ blueprint:
           step: 1
           unit_of_measurement: "%"
     humidity_stop:
-      name: Humidity recovery threshold
+      name: Gjenopprettingsgrense for luftfuktighet / Humidity recovery threshold
       default: 60
       selector:
         number:
@@ -162,7 +165,7 @@ blueprint:
           step: 1
           unit_of_measurement: "%"
     pm25_limit:
-      name: PM2.5 safety limit
+      name: Sikkerhetsgrense for PM2,5 / PM2.5 safety limit
       default: 25
       selector:
         number:
@@ -171,17 +174,17 @@ blueprint:
           step: 1
           unit_of_measurement: µg/m³
     trigger_duration:
-      name: Sustained demand before starting
+      name: Vedvarende behov før start / Sustained demand duration
       default: "00:10:00"
       selector:
         duration:
     recovery_duration:
-      name: Sustained recovery before restoring
+      name: Vedvarende bedring før gjenoppretting / Recovery duration
       default: "00:15:00"
       selector:
         duration:
     maximum_duration:
-      name: Hard maximum Boost duration
+      name: Absolutt maksimal varighet / Hard maximum Boost duration
       default: "02:00:00"
       selector:
         duration:
@@ -282,7 +285,7 @@ actions:
               - action: input_boolean.turn_off
                 target:
                   entity_id: !input ownership_helper
-              - stop: Ventilation mode changed while Home Assistant was offline
+              - stop: Ventilasjonsmodus ble endret mens Home Assistant var frakoblet / mode changed while offline
           - if:
               - condition: template
                 value_template: "{{ not is_state(maximum_timer_entity, 'active') }}"
@@ -300,7 +303,7 @@ actions:
               - action: input_boolean.turn_off
                 target:
                   entity_id: !input ownership_helper
-              - stop: Boost deadline elapsed while Home Assistant was offline
+              - stop: Tidsfristen utløp mens Home Assistant var frakoblet / Boost deadline elapsed while offline
     default:
       - action: input_select.select_option
         target:

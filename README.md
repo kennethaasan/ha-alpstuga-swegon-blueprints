@@ -4,6 +4,10 @@ Safe, reusable Home Assistant blueprints derived from a real installation that
 uses an IKEA ALPSTUGA air-quality monitor to request a bounded ventilation
 Boost from Swegon CASA.
 
+Blueprint input names and safety descriptions are shown in both Norwegian
+Bokmål and English. Runtime mode values are language-neutral, so the same
+automation works regardless of the Home Assistant UI language.
+
 The first blueprint is vendor-flexible: it works with an ALPSTUGA connected over
 Matter and any ventilation integration that exposes its operating mode as a
 Home Assistant `select` entity.

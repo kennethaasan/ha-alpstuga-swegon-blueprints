@@ -20,10 +20,13 @@ path = Path("blueprints/automation/kennethaasan/alpstuga_ventilation_boost.yaml"
 document: dict[str, Any] = yaml.load(path.read_text(), Loader=BlueprintLoader)
 
 assert document["blueprint"]["domain"] == "automation"
+assert "avgrenset ventilasjonsforsering" in document["blueprint"]["name"]
 assert document["blueprint"]["input"]
 assert "additional_safety_entities" in document["blueprint"]["input"]
 assert "predictive_demand_sensors" in document["blueprint"]["input"]
 assert document["blueprint"]["input"]["predictive_demand_sensors"]["default"] == []
+assert document["blueprint"]["input"]["boost_option"]["default"] == "boost"
+assert document["blueprint"]["input"]["fallback_mode"]["default"] == "home"
 assert any(trigger.get("id") == "predictive" for trigger in document["triggers"])
 assert document["triggers"]
 assert document["actions"]
