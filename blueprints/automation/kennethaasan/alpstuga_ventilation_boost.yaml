@@ -32,6 +32,23 @@ blueprint:
           filter:
             - domain: sensor
               device_class: pm25
+    predictive_demand_sensors:
+      name: Predictive demand sensors
+      description: >-
+        Optional binary sensors that turn on before a measured threshold is
+        reached, for example a rate-of-rise CO2 forecast. Any listed sensor can
+        request Boost, but all normal safety and mode checks still apply.
+      default: []
+      selector:
+        entity:
+          filter:
+            - domain: binary_sensor
+          multiple: true
+    predictive_trigger_duration:
+      name: Sustained predictive demand before starting
+      default: "00:05:00"
+      selector:
+        duration:
     additional_safety_entities:
       name: Additional safety entities
       description: >-
@@ -173,6 +190,7 @@ variables:
   co2_entity: !input co2_sensor
   humidity_entity: !input humidity_sensor
   pm25_entity: !input pm25_sensor
+  predictive_demand: !input predictive_demand_sensors
   additional_safety: !input additional_safety_entities
   ventilation_entity: !input ventilation_mode
   ownership_entity: !input ownership_helper
@@ -197,6 +215,11 @@ triggers:
     entity_id: !input humidity_sensor
     above: !input humidity_start
     for: !input trigger_duration
+  - trigger: state
+    id: predictive
+    entity_id: !input predictive_demand_sensors
+    to: "on"
+    for: !input predictive_trigger_duration
   - trigger: homeassistant
     id: restart
     event: start
@@ -210,7 +233,7 @@ conditions:
       - condition: and
         conditions:
           - condition: template
-            value_template: "{{ trigger.id in ['co2', 'humidity'] }}"
+            value_template: "{{ trigger.id in ['co2', 'humidity', 'predictive'] }}"
           - condition: state
             entity_id: !input ownership_helper
             state: "off"
@@ -222,6 +245,12 @@ conditions:
           - condition: template
             value_template: >-
               {{ states(pm25_entity) | float(999) < pm25_maximum | float }}
+          - condition: template
+            value_template: >-
+              {{ trigger.id != 'predictive'
+                 or (predictive_demand | count > 0
+                     and expand(predictive_demand)
+                         | selectattr('state', 'eq', 'on') | list | count > 0) }}
           - condition: template
             value_template: >-
               {% set required = additional_safety | count %}

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.0 - 2026-08-30
+
+- Accept optional predictive binary demand sensors, such as a bounded CO2
+  rate-of-rise forecast, without bypassing PM2.5, telemetry, alarm, ownership,
+  mode, recovery, or maximum-duration safeguards.
+- Allow a separate sustained duration for predictive demand.
+
 ## 2.0.0 - 2026-08-30
 
 - Preserve automation ownership, the previous ventilation mode, and the hard

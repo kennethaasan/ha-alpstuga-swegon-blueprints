@@ -22,6 +22,9 @@ document: dict[str, Any] = yaml.load(path.read_text(), Loader=BlueprintLoader)
 assert document["blueprint"]["domain"] == "automation"
 assert document["blueprint"]["input"]
 assert "additional_safety_entities" in document["blueprint"]["input"]
+assert "predictive_demand_sensors" in document["blueprint"]["input"]
+assert document["blueprint"]["input"]["predictive_demand_sensors"]["default"] == []
+assert any(trigger.get("id") == "predictive" for trigger in document["triggers"])
 assert document["triggers"]
 assert document["actions"]
 assert document["mode"] == "single"

@@ -14,7 +14,8 @@ Home Assistant `select` entity.
 
 The automation:
 
-- starts only after sustained high CO2 or humidity;
+- starts only after sustained high CO2 or humidity, or an optional sustained
+  predictive demand sensor;
 - refuses to start when PM2.5 is unsafe or required sensor data is unavailable;
 - can require optional binary safety entities for alarms, telemetry freshness,
   or a master enable switch;
@@ -28,6 +29,12 @@ The automation:
 
 Recommended defaults are 1000/800 ppm CO2, 65/60% relative humidity, a PM2.5
 limit of 25 µg/m³, and a two-hour maximum Boost.
+
+Predictive demand is optional. A useful implementation combines the current
+CO2 level with a smoothed rate of rise and turns on only when a bounded forecast
+crosses the normal start threshold. The blueprint treats that input only as a
+demand signal: every existing safety gate, eligible-mode check, recovery rule,
+manual override, and maximum-duration limit remains authoritative.
 
 ## Requirements
 
