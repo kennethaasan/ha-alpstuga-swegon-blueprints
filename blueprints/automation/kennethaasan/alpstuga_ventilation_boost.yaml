@@ -94,6 +94,14 @@ blueprint:
       default: "Automatic,Home,Home +"
       selector:
         text:
+    restorable_modes:
+      name: Writable modes that can be restored
+      description: >-
+        Comma-separated subset of eligible modes that the integration can
+        write. Read-only automatic/transient states use the fallback mode.
+      default: "Home,Home +"
+      selector:
+        text:
     fallback_mode:
       name: Safe fallback mode
       description: Used only if the previous mode is no longer eligible.
@@ -172,6 +180,7 @@ variables:
   maximum_timer_entity: !input maximum_timer
   boost_mode: !input boost_option
   eligible_modes_text: !input eligible_modes
+  restorable_modes_text: !input restorable_modes
   fallback: !input fallback_mode
   co2_recovered: !input co2_stop
   humidity_recovered: !input humidity_stop
@@ -251,9 +260,9 @@ actions:
             then:
               - variables:
                   restore_mode: >-
-                    {% set eligible = eligible_modes_text.split(',') | map('trim') | list %}
+                    {% set restorable = restorable_modes_text.split(',') | map('trim') | list %}
                     {% set previous = states(previous_mode_entity) %}
-                    {{ previous if previous in eligible else fallback }}
+                    {{ previous if previous in restorable else fallback }}
               - action: select.select_option
                 target:
                   entity_id: !input ventilation_mode
@@ -316,9 +325,9 @@ actions:
     then:
       - variables:
           restore_mode: >-
-            {% set eligible = eligible_modes_text.split(',') | map('trim') | list %}
+            {% set restorable = restorable_modes_text.split(',') | map('trim') | list %}
             {% set previous = states(previous_mode_entity) %}
-            {{ previous if previous in eligible else fallback }}
+            {{ previous if previous in restorable else fallback }}
       - action: select.select_option
         target:
           entity_id: !input ventilation_mode

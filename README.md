@@ -41,6 +41,9 @@ The helpers make restart behavior explicit: an in-progress automation-owned
 Boost continues after a normal Home Assistant restart, while its original hard
 deadline and previous mode remain intact. A mode changed while Home Assistant
 was offline is treated as a manual override and is never overwritten.
+Integrations that report a read-only `Automatic` state can list it as eligible
+while excluding it from **Writable modes that can be restored**; the blueprint
+then restores the configured fallback such as `Home`.
 
 The blueprint does not alter commissioning parameters, fan calibration, heater
 settings, alarms, or physical safety controls.
