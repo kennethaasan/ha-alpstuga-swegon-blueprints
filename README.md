@@ -48,6 +48,25 @@ then restores the configured fallback such as `Home`.
 The blueprint does not alter commissioning parameters, fan calibration, heater
 settings, alarms, or physical safety controls.
 
+## Upgrading from 1.x
+
+Version 2 requires three persistent Home Assistant helpers for each automation:
+
+- an `input_boolean` that records Boost ownership;
+- an `input_select` containing the normal/fallback ventilation modes; and
+- a `timer` configured with restore enabled.
+
+Open the imported blueprint automation after updating, select those helpers,
+and save it. If the integration reports a read-only state such as `Automatic`,
+include it under eligible modes but omit it from writable restore modes; set
+`Home` as the fallback.
+
+## Release policy
+
+Every functional change is versioned and published as a GitHub release. Stable
+deployments should pin a release tag rather than consume the moving `main`
+branch. Breaking blueprint-input changes increment the major version.
+
 ## Important limitations
 
 This project cannot rotate the physical ALPSTUGA display. IKEA currently exposes
