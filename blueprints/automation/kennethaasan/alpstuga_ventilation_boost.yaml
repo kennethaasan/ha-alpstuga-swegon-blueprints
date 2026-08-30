@@ -32,6 +32,23 @@ blueprint:
           filter:
             - domain: sensor
               device_class: pm25
+    additional_safety_entities:
+      name: Additional safety entities
+      description: >-
+        Optional binary sensors that must all remain on for automatic Boost.
+        Use these for ventilation alarms, telemetry freshness, or a master
+        enable switch. Missing, unavailable, unknown, or off is unsafe.
+      default: []
+      selector:
+        entity:
+          filter:
+            - domain: binary_sensor
+          multiple: true
+    additional_safety_duration:
+      name: Sustained additional-safety failure before restoring
+      default: "00:05:00"
+      selector:
+        duration:
     ventilation_mode:
       name: Ventilation mode
       description: Select entity that controls the ventilation operating mode.
@@ -121,6 +138,7 @@ variables:
   co2_entity: !input co2_sensor
   humidity_entity: !input humidity_sensor
   pm25_entity: !input pm25_sensor
+  additional_safety: !input additional_safety_entities
   ventilation_entity: !input ventilation_mode
   boost_mode: !input boost_option
   eligible_modes_text: !input eligible_modes
@@ -150,6 +168,12 @@ conditions:
       {{ states(pm25_entity) | float(999) < pm25_maximum | float }}
   - condition: template
     value_template: >-
+      {% set required = additional_safety | count %}
+      {{ required == 0
+         or expand(additional_safety)
+            | selectattr('state', 'eq', 'on') | list | count == required }}
+  - condition: template
+    value_template: >-
       {% set eligible = eligible_modes_text.split(',') | map('trim') | list %}
       {{ states(ventilation_entity) in eligible }}
 
@@ -174,6 +198,13 @@ actions:
         for: "00:05:00"
       - trigger: template
         value_template: >-
+          {% set required = additional_safety | count %}
+          {{ required > 0
+             and expand(additional_safety)
+                 | selectattr('state', 'eq', 'on') | list | count < required }}
+        for: !input additional_safety_duration
+      - trigger: template
+        value_template: >-
           {{ states(ventilation_entity) not in [boost_mode, 'unknown', 'unavailable'] }}
     timeout: !input maximum_duration
     continue_on_timeout: true
@@ -193,4 +224,3 @@ actions:
 
 mode: single
 max_exceeded: silent
-

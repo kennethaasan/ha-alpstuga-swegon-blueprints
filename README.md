@@ -15,7 +15,9 @@ Home Assistant `select` entity.
 The automation:
 
 - starts only after sustained high CO2 or humidity;
-- refuses to start when PM2.5 is unsafe or telemetry is unavailable;
+- refuses to start when PM2.5 is unsafe or required sensor data is unavailable;
+- can require optional binary safety entities for alarms, telemetry freshness,
+  or a master enable switch;
 - only takes ownership from configured normal modes;
 - remembers and restores the previous normal mode;
 - stops after sustained recovery, unsafe PM2.5, a manual mode change, or a
@@ -44,4 +46,3 @@ and clock pages.
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
-
