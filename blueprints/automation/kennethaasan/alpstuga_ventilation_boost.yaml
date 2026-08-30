@@ -1,0 +1,196 @@
+blueprint:
+  name: ALPSTUGA - bounded ventilation boost
+  description: >-
+    Request a bounded ventilation Boost after sustained high CO2 or humidity.
+    Refuses unsafe PM2.5, restores the previous normal mode after recovery or a
+    hard timeout, and never overrides a later manual mode change.
+  domain: automation
+  homeassistant:
+    min_version: 2024.10.0
+  input:
+    co2_sensor:
+      name: CO2 sensor
+      description: ALPSTUGA carbon-dioxide concentration sensor.
+      selector:
+        entity:
+          filter:
+            - domain: sensor
+              device_class: carbon_dioxide
+    humidity_sensor:
+      name: Humidity sensor
+      description: ALPSTUGA relative-humidity sensor.
+      selector:
+        entity:
+          filter:
+            - domain: sensor
+              device_class: humidity
+    pm25_sensor:
+      name: PM2.5 sensor
+      description: ALPSTUGA PM2.5 concentration sensor used as a safety limit.
+      selector:
+        entity:
+          filter:
+            - domain: sensor
+              device_class: pm25
+    ventilation_mode:
+      name: Ventilation mode
+      description: Select entity that controls the ventilation operating mode.
+      selector:
+        entity:
+          filter:
+            - domain: select
+    boost_option:
+      name: Boost option
+      default: Boost
+      selector:
+        text:
+    eligible_modes:
+      name: Modes automation may take over
+      description: Comma-separated normal modes. Away modes should not be listed.
+      default: "Automatic,Home,Home +"
+      selector:
+        text:
+    fallback_mode:
+      name: Safe fallback mode
+      description: Used only if the previous mode is no longer eligible.
+      default: Home
+      selector:
+        text:
+    co2_start:
+      name: CO2 start threshold
+      default: 1000
+      selector:
+        number:
+          min: 600
+          max: 2500
+          step: 50
+          unit_of_measurement: ppm
+    co2_stop:
+      name: CO2 recovery threshold
+      default: 800
+      selector:
+        number:
+          min: 400
+          max: 1500
+          step: 50
+          unit_of_measurement: ppm
+    humidity_start:
+      name: Humidity start threshold
+      default: 65
+      selector:
+        number:
+          min: 40
+          max: 90
+          step: 1
+          unit_of_measurement: "%"
+    humidity_stop:
+      name: Humidity recovery threshold
+      default: 60
+      selector:
+        number:
+          min: 30
+          max: 80
+          step: 1
+          unit_of_measurement: "%"
+    pm25_limit:
+      name: PM2.5 safety limit
+      default: 25
+      selector:
+        number:
+          min: 5
+          max: 100
+          step: 1
+          unit_of_measurement: µg/m³
+    trigger_duration:
+      name: Sustained demand before starting
+      default: "00:10:00"
+      selector:
+        duration:
+    recovery_duration:
+      name: Sustained recovery before restoring
+      default: "00:15:00"
+      selector:
+        duration:
+    maximum_duration:
+      name: Hard maximum Boost duration
+      default: "02:00:00"
+      selector:
+        duration:
+
+variables:
+  co2_entity: !input co2_sensor
+  humidity_entity: !input humidity_sensor
+  pm25_entity: !input pm25_sensor
+  ventilation_entity: !input ventilation_mode
+  boost_mode: !input boost_option
+  eligible_modes_text: !input eligible_modes
+  fallback: !input fallback_mode
+  co2_recovered: !input co2_stop
+  humidity_recovered: !input humidity_stop
+  pm25_maximum: !input pm25_limit
+
+triggers:
+  - trigger: numeric_state
+    entity_id: !input co2_sensor
+    above: !input co2_start
+    for: !input trigger_duration
+  - trigger: numeric_state
+    entity_id: !input humidity_sensor
+    above: !input humidity_start
+    for: !input trigger_duration
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ states(co2_entity) not in ['unknown', 'unavailable']
+         and states(humidity_entity) not in ['unknown', 'unavailable']
+         and states(pm25_entity) not in ['unknown', 'unavailable'] }}
+  - condition: template
+    value_template: >-
+      {{ states(pm25_entity) | float(999) < pm25_maximum | float }}
+  - condition: template
+    value_template: >-
+      {% set eligible = eligible_modes_text.split(',') | map('trim') | list %}
+      {{ states(ventilation_entity) in eligible }}
+
+actions:
+  - variables:
+      previous_mode: "{{ states(ventilation_entity) }}"
+  - action: select.select_option
+    target:
+      entity_id: !input ventilation_mode
+    data:
+      option: !input boost_option
+  - wait_for_trigger:
+      - trigger: template
+        value_template: >-
+          {{ states(co2_entity) | float(9999) < co2_recovered | float
+             and states(humidity_entity) | float(999) < humidity_recovered | float }}
+        for: !input recovery_duration
+      - trigger: template
+        value_template: >-
+          {{ states(pm25_entity) in ['unknown', 'unavailable']
+             or states(pm25_entity) | float(999) >= pm25_maximum | float }}
+        for: "00:05:00"
+      - trigger: template
+        value_template: >-
+          {{ states(ventilation_entity) not in [boost_mode, 'unknown', 'unavailable'] }}
+    timeout: !input maximum_duration
+    continue_on_timeout: true
+  - if:
+      - condition: template
+        value_template: "{{ is_state(ventilation_entity, boost_mode) }}"
+    then:
+      - variables:
+          restore_mode: >-
+            {% set eligible = eligible_modes_text.split(',') | map('trim') | list %}
+            {{ previous_mode if previous_mode in eligible else fallback }}
+      - action: select.select_option
+        target:
+          entity_id: !input ventilation_mode
+        data:
+          option: "{{ restore_mode }}"
+
+mode: single
+max_exceeded: silent
+
