@@ -56,6 +56,33 @@ blueprint:
         entity:
           filter:
             - domain: select
+    ownership_helper:
+      name: Boost ownership helper
+      description: >-
+        Input boolean used to persist that this automation owns Boost across a
+        Home Assistant restart.
+      selector:
+        entity:
+          filter:
+            - domain: input_boolean
+    previous_mode_helper:
+      name: Previous-mode helper
+      description: >-
+        Input select used to persist the normal mode that should be restored.
+        Its options must include every eligible mode and the fallback mode.
+      selector:
+        entity:
+          filter:
+            - domain: input_select
+    maximum_timer:
+      name: Maximum-duration timer
+      description: >-
+        Timer used to persist the hard Boost deadline. Configure the timer with
+        restore enabled; the blueprint supplies its duration when Boost starts.
+      selector:
+        entity:
+          filter:
+            - domain: timer
     boost_option:
       name: Boost option
       default: Boost
@@ -140,6 +167,9 @@ variables:
   pm25_entity: !input pm25_sensor
   additional_safety: !input additional_safety_entities
   ventilation_entity: !input ventilation_mode
+  ownership_entity: !input ownership_helper
+  previous_mode_entity: !input previous_mode_helper
+  maximum_timer_entity: !input maximum_timer
   boost_mode: !input boost_option
   eligible_modes_text: !input eligible_modes
   fallback: !input fallback_mode
@@ -149,42 +179,109 @@ variables:
 
 triggers:
   - trigger: numeric_state
+    id: co2
     entity_id: !input co2_sensor
     above: !input co2_start
     for: !input trigger_duration
   - trigger: numeric_state
+    id: humidity
     entity_id: !input humidity_sensor
     above: !input humidity_start
     for: !input trigger_duration
+  - trigger: homeassistant
+    id: restart
+    event: start
 
 conditions:
-  - condition: template
-    value_template: >-
-      {{ states(co2_entity) not in ['unknown', 'unavailable']
-         and states(humidity_entity) not in ['unknown', 'unavailable']
-         and states(pm25_entity) not in ['unknown', 'unavailable'] }}
-  - condition: template
-    value_template: >-
-      {{ states(pm25_entity) | float(999) < pm25_maximum | float }}
-  - condition: template
-    value_template: >-
-      {% set required = additional_safety | count %}
-      {{ required == 0
-         or expand(additional_safety)
-            | selectattr('state', 'eq', 'on') | list | count == required }}
-  - condition: template
-    value_template: >-
-      {% set eligible = eligible_modes_text.split(',') | map('trim') | list %}
-      {{ states(ventilation_entity) in eligible }}
+  - condition: or
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.id == 'restart' and is_state(ownership_entity, 'on') }}
+      - condition: and
+        conditions:
+          - condition: template
+            value_template: "{{ trigger.id in ['co2', 'humidity'] }}"
+          - condition: state
+            entity_id: !input ownership_helper
+            state: "off"
+          - condition: template
+            value_template: >-
+              {{ states(co2_entity) not in ['unknown', 'unavailable']
+                 and states(humidity_entity) not in ['unknown', 'unavailable']
+                 and states(pm25_entity) not in ['unknown', 'unavailable'] }}
+          - condition: template
+            value_template: >-
+              {{ states(pm25_entity) | float(999) < pm25_maximum | float }}
+          - condition: template
+            value_template: >-
+              {% set required = additional_safety | count %}
+              {{ required == 0
+                 or expand(additional_safety)
+                    | selectattr('state', 'eq', 'on') | list | count == required }}
+          - condition: template
+            value_template: >-
+              {% set eligible = eligible_modes_text.split(',') | map('trim') | list %}
+              {{ states(ventilation_entity) in eligible }}
 
 actions:
-  - variables:
-      previous_mode: "{{ states(ventilation_entity) }}"
-  - action: select.select_option
-    target:
-      entity_id: !input ventilation_mode
-    data:
-      option: !input boost_option
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'restart' }}"
+        sequence:
+          - wait_template: >-
+              {{ states(ventilation_entity) not in ['unknown', 'unavailable'] }}
+            timeout: "00:05:00"
+            continue_on_timeout: false
+          - if:
+              - condition: template
+                value_template: "{{ not is_state(ventilation_entity, boost_mode) }}"
+            then:
+              - action: timer.cancel
+                target:
+                  entity_id: !input maximum_timer
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: !input ownership_helper
+              - stop: Ventilation mode changed while Home Assistant was offline
+          - if:
+              - condition: template
+                value_template: "{{ not is_state(maximum_timer_entity, 'active') }}"
+            then:
+              - variables:
+                  restore_mode: >-
+                    {% set eligible = eligible_modes_text.split(',') | map('trim') | list %}
+                    {% set previous = states(previous_mode_entity) %}
+                    {{ previous if previous in eligible else fallback }}
+              - action: select.select_option
+                target:
+                  entity_id: !input ventilation_mode
+                data:
+                  option: "{{ restore_mode }}"
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: !input ownership_helper
+              - stop: Boost deadline elapsed while Home Assistant was offline
+    default:
+      - action: input_select.select_option
+        target:
+          entity_id: !input previous_mode_helper
+        data:
+          option: "{{ states(ventilation_entity) }}"
+      - action: input_boolean.turn_on
+        target:
+          entity_id: !input ownership_helper
+      - action: timer.start
+        target:
+          entity_id: !input maximum_timer
+        data:
+          duration: !input maximum_duration
+      - action: select.select_option
+        target:
+          entity_id: !input ventilation_mode
+        data:
+          option: !input boost_option
   - wait_for_trigger:
       - trigger: template
         value_template: >-
@@ -206,21 +303,33 @@ actions:
       - trigger: template
         value_template: >-
           {{ states(ventilation_entity) not in [boost_mode, 'unknown', 'unavailable'] }}
-    timeout: !input maximum_duration
-    continue_on_timeout: true
+      - trigger: state
+        entity_id: !input maximum_timer
+        from: active
+        to: idle
   - if:
+      - condition: state
+        entity_id: !input ownership_helper
+        state: "on"
       - condition: template
         value_template: "{{ is_state(ventilation_entity, boost_mode) }}"
     then:
       - variables:
           restore_mode: >-
             {% set eligible = eligible_modes_text.split(',') | map('trim') | list %}
-            {{ previous_mode if previous_mode in eligible else fallback }}
+            {% set previous = states(previous_mode_entity) %}
+            {{ previous if previous in eligible else fallback }}
       - action: select.select_option
         target:
           entity_id: !input ventilation_mode
         data:
           option: "{{ restore_mode }}"
+  - action: timer.cancel
+    target:
+      entity_id: !input maximum_timer
+  - action: input_boolean.turn_off
+    target:
+      entity_id: !input ownership_helper
 
 mode: single
 max_exceeded: silent

@@ -20,6 +20,8 @@ The automation:
   or a master enable switch;
 - only takes ownership from configured normal modes;
 - remembers and restores the previous normal mode;
+- persists ownership, the previous mode, and the hard deadline across Home
+  Assistant restarts;
 - stops after sustained recovery, unsafe PM2.5, a manual mode change, or a
   configurable hard time limit; and
 - never restores over a later manual mode change.
@@ -32,6 +34,13 @@ limit of 25 µg/m³, and a two-hour maximum Boost.
 - Home Assistant 2024.10 or newer
 - an ALPSTUGA—or equivalent—CO2, humidity and PM2.5 sensor
 - a ventilation integration with a writable mode `select`
+- one `input_boolean` ownership helper, one `input_select` whose options cover
+  the eligible/fallback modes, and one `timer` helper with restore enabled
+
+The helpers make restart behavior explicit: an in-progress automation-owned
+Boost continues after a normal Home Assistant restart, while its original hard
+deadline and previous mode remain intact. A mode changed while Home Assistant
+was offline is treated as a manual override and is never overwritten.
 
 The blueprint does not alter commissioning parameters, fan calibration, heater
 settings, alarms, or physical safety controls.
