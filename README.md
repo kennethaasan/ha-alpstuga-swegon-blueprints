@@ -40,6 +40,23 @@ crosses the normal start threshold. The blueprint treats that input only as a
 demand signal: every existing safety gate, eligible-mode check, recovery rule,
 manual override, and maximum-duration limit remains authoritative.
 
+### Moisture-aware humidity demand
+
+Relative humidity alone does not say whether outdoor air can dry a building.
+Installations with indoor/outdoor temperature and humidity can calculate
+absolute humidity in `g/m³`, then expose a template humidity sensor that mirrors
+the real indoor relative humidity only while outdoor air is meaningfully drier
+(for example by at least `0.3 g/m³`) and reports `0` otherwise. Select that
+template as the blueprint's humidity sensor. CO2 demand remains independent
+because it uses its own input.
+
+A separate binary sensor can detect a sustained humidity rate of rise—for
+example at least 12 percentage points/hour while indoor RH is at least 50% and
+outdoor air is drier—and be added under **Predictive demand sensors**. This can
+react to showers or cooking before the fixed high-humidity threshold, while the
+blueprint still enforces PM2.5, telemetry, alarm, ownership, recovery, manual
+override, and maximum-duration safeguards.
+
 ## Requirements
 
 - Home Assistant 2024.10 or newer

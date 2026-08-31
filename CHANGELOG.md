@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.1 - 2026-08-31
+
+- Document the production-tested absolute-humidity proxy pattern so relative
+  humidity requests Boost only when outdoor air can actually dry the building.
+- Document early humidity rate-of-rise demand through the existing predictive
+  sensor input without weakening any safety or ownership guarantees.
+
 ## 2.2.0 - 2026-08-30
 
 - Add Norwegian Bokmål alongside English to every blueprint input, safety
